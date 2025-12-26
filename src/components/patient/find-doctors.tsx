@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Search, MapPin, Star, Clock, Phone, Calendar, 
   Stethoscope, Heart, Brain, Eye, Bone, Baby, Users, Loader2
@@ -34,27 +34,34 @@ export function FindDoctors() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const doctorsQuery = query(collection(db, "users"), where("role", "==", "doctor"));
-    const unsubscribe = onSnapshot(doctorsQuery, (snapshot) => {
-      const doctorsList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        name: doc.data().displayName || doc.data().name || "Dr. Unknown",
-        specialization: doc.data().specialization || "General Medicine",
-        hospital: doc.data().hospital || "Hospital",
-        location: doc.data().location || "Location",
-        rating: doc.data().rating || 4.5,
-        reviews: doc.data().reviews || 0,
-        experience: doc.data().experience || 5,
-        consultationFee: doc.data().consultationFee || 500,
-        image: doc.data().image || "",
-        availability: "Available Today"
-      }));
-      setDoctors(doctorsList);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    const timer = setTimeout(() => {
+      const doctorsQuery = query(collection(db, "users"), where("role", "==", "doctor"));
+      const unsubscribe = onSnapshot(doctorsQuery, (snapshot) => {
+        const doctorsList = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          name: doc.data().displayName || doc.data().name || "Dr. Unknown",
+          specialization: doc.data().specialization || "General Medicine",
+          hospital: doc.data().hospital || "Hospital",
+          location: doc.data().location || "Location",
+          rating: doc.data().rating || 4.5,
+          reviews: doc.data().reviews || 0,
+          experience: doc.data().experience || 5,
+          consultationFee: doc.data().consultationFee || 500,
+          image: doc.data().image || "",
+          availability: "Available Today"
+        }));
+        setDoctors(doctorsList);
+        setLoading(false);
+      }, () => {
+        setDoctors([]);
+        setLoading(false);
+      });
+      
+      return () => unsubscribe();
+    }, 2000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const filteredDoctors = doctors.filter(doctor => {
@@ -270,7 +277,10 @@ export function FindDoctors() {
                   </Button>
                   <Button 
                     className="bg-[#009688] hover:bg-[#00796B] text-white font-semibold py-2 shadow-md"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedDoctor(doctor.id);
+                    }}
                   >
                     <Calendar className="h-4 w-4 mr-2" />
                     Book Appointment
@@ -286,6 +296,9 @@ export function FindDoctors() {
       {/* Doctor Profile Modal */}
       <Dialog open={!!selectedDoctor} onOpenChange={() => setSelectedDoctor(null)}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Doctor Profile</DialogTitle>
+          </DialogHeader>
           {selectedDoctor && (
             <div className="p-6">
               <DoctorProfile doctorId={selectedDoctor} isOwnProfile={false} />

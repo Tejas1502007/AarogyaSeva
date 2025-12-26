@@ -1,9 +1,10 @@
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/summarize-medical-records.ts';
-import '@/ai/flows/extract-record-info.ts';
-import '@/ai/flows/scan-report.ts';
-import '@/ai/flows/disease-predictor.ts';
+// Import AI flows to ensure they're available
+import '@/ai/flows/summarize-medical-records';
+import '@/ai/flows/extract-record-info';
+import '@/ai/flows/scan-report';
+import '@/ai/flows/disease-predictor';
 
-    
+console.log('AI flows loaded successfully');

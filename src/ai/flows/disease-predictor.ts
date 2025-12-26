@@ -2,63 +2,61 @@
 
 'use server';
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { model } from '@/ai/genkit';
 
-const DiseasePredictorInputSchema = z.object({
-  symptoms: z.string().describe("A description of the symptoms the user is experiencing."),
-  painLocation: z.string().describe("A textual description of the part of the body where the user is feeling pain (e.g., 'my head', 'lower abdomen', 'left arm')."),
-  duration: z.string().describe("How long the user has been experiencing these symptoms (e.g., '3 days', '2 weeks')."),
-});
-export type DiseasePredictorInput = z.infer<typeof DiseasePredictorInputSchema>;
-
-const DiseasePredictorOutputSchema = z.object({
-    predictedDiseases: z.array(z.object({
-        name: z.string().describe("The name of the potential disease or condition."),
-        probability: z.string().describe("A textual representation of the likelihood (e.g., 'High', 'Medium', 'Low')."),
-        description: z.string().describe("A brief explanation of the disease."),
-    })).describe("A list of potential diseases based on the symptoms."),
-    affectedArea: z.enum(['Head', 'Chest', 'Abdomen', 'Left_Arm', 'Right_Arm', 'Left_Leg', 'Right_Leg', 'None']).describe("The machine-readable ID of the body part to highlight, based on the user's description. Return 'None' if it does not match a specific area."),
-    disclaimer: z.string().describe("A mandatory disclaimer stating that this is not a medical diagnosis."),
-    recordType: z.string().describe("The type of record, which should be 'AI Disease Prediction'."),
-});
-export type DiseasePredictorOutput = z.infer<typeof DiseasePredictorOutputSchema>;
-
-export async function predictDisease(
-  input: DiseasePredictorInput
-): Promise<DiseasePredictorOutput> {
-  return diseasePredictorFlow(input);
+export interface DiseasePredictorInput {
+  symptoms: string;
+  painLocation: string;
+  duration: string;
 }
 
-const prompt = ai.definePrompt({
-  name: 'diseasePredictorPrompt',
-  input: {schema: DiseasePredictorInputSchema},
-  output: {schema: DiseasePredictorOutputSchema},
-  prompt: `You are an AI medical assistant. Your role is to analyze the provided symptoms and predict potential diseases. You are not a real doctor.
+export interface DiseasePredictorOutput {
+  predictedDiseases: Array<{
+    name: string;
+    probability: string;
+    description: string;
+  }>;
+  affectedArea: 'Head' | 'Chest' | 'Abdomen' | 'Left_Arm' | 'Right_Arm' | 'Left_Leg' | 'Right_Leg' | 'None';
+  disclaimer: string;
+  recordType: string;
+}
 
-  Analyze the following information:
-  - Symptoms: {{{symptoms}}}
-  - Pain Location: {{{painLocation}}}
-  - Duration: {{{duration}}}
+export async function predictDisease(input: DiseasePredictorInput): Promise<DiseasePredictorOutput> {
+  const prompt = `You are an AI medical assistant. Your role is to analyze the provided symptoms and predict potential diseases. You are not a real doctor.
 
-  Based on this information, provide a list of potential diseases with a probability score (High, Medium, or Low) and a brief description for each.
+Analyze the following information:
+- Symptoms: ${input.symptoms}
+- Pain Location: ${input.painLocation}
+- Duration: ${input.duration}
 
-  From the 'Pain Location' description, identify the corresponding body part and set the 'affectedArea' field to one of the following IDs: 'Head', 'Chest', 'Abdomen', 'Left_Arm', 'Right_Arm', 'Left_Leg', 'Right_Leg'. If the location is ambiguous or not one of these specific parts, set 'affectedArea' to 'None'.
+Based on this information, provide a list of potential diseases with a probability score (High, Medium, or Low) and a brief description for each.
 
-  Set the 'recordType' field to "AI Disease Prediction".
+From the 'Pain Location' description, identify the corresponding body part and set the 'affectedArea' field to one of the following IDs: 'Head', 'Chest', 'Abdomen', 'Left_Arm', 'Right_Arm', 'Left_Leg', 'Right_Leg'. If the location is ambiguous or not one of these specific parts, set 'affectedArea' to 'None'.
 
-  Crucially, you MUST include the following disclaimer in your output: "This is an AI-generated prediction and not a substitute for professional medical advice. Please consult a qualified doctor for an accurate diagnosis."
-  `,
-});
+Set the 'recordType' field to "AI Disease Prediction".
 
-const diseasePredictorFlow = ai.defineFlow(
-  {
-    name: 'diseasePredictorFlow',
-    inputSchema: DiseasePredictorInputSchema,
-    outputSchema: DiseasePredictorOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+Crucially, you MUST include the following disclaimer in your output: "This is an AI-generated prediction and not a substitute for professional medical advice. Please consult a qualified doctor for an accurate diagnosis."
+
+Return the response as a JSON object with the following structure:
+{
+  "predictedDiseases": [{"name": "string", "probability": "string", "description": "string"}],
+  "affectedArea": "string",
+  "disclaimer": "string",
+  "recordType": "string"
+}
+
+IMPORTANT: Return ONLY the JSON object, no additional text or markdown formatting.`;
+
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  const text = response.text();
+  
+  try {
+    // Clean the response text to extract JSON
+    const cleanText = text.replace(/```json\n?|```\n?/g, '').trim();
+    return JSON.parse(cleanText);
+  } catch (error) {
+    console.error('AI Response parsing error:', text);
+    throw new Error(`Failed to parse AI response: ${error.message}`);
   }
-);
+}

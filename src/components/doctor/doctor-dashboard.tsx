@@ -3,7 +3,7 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Activity, Eye, Bell, Calendar, Loader2, HeartPulse, Sparkles, Award, GraduationCap, Stethoscope, Settings, User } from "lucide-react";
+import { Users, Activity, Eye, Bell, Calendar, Loader2, HeartPulse, Sparkles, Award, GraduationCap, Stethoscope, Settings, User, Video } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot, Timestamp, doc, getDoc } from "firebase/firestore";
@@ -11,6 +11,8 @@ import { db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { isToday } from "date-fns";
 import { ProfileEditModal } from "@/components/ui/profile-edit-modal";
+import DoctorEmergencyCalls from "@/components/doctor/emergency-calls";
+import ScheduledMeeting from "@/components/scheduled-meeting";
 
 const motivationalQuotes = [
     { quote: "The good physician treats the disease; the great physician treats the patient who has the disease.", author: "William Osler" },
@@ -228,6 +230,12 @@ export default function DoctorDashboard() {
             delay="animate-delay-400"
           />
       </div>
+
+      {/* Scheduled Meetings */}
+      <ScheduledMeeting />
+
+      {/* Emergency Calls */}
+      <DoctorEmergencyCalls />
 
       {/* Motivational Quotes */}
       <Card className="bg-white border-[#06B6D4]/30 shadow-xl">

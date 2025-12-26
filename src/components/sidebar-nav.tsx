@@ -40,6 +40,7 @@ const navLinks: { [key: string]: NavItem[] } = {
     { href: "/patient/disease-predictor", label: "Disease Predictor", icon: <Activity />, matchExact: true },
     { href: "/patient/find-doctors", label: "Find Doctors", icon: <Search />, matchExact: true },
     { href: "/patient/appointments", label: "Appointments", icon: <Calendar />, matchExact: true },
+    { href: "/patient/meetings", label: "Video Meetings", icon: <Clock />, matchExact: true },
     { href: "/patient/pharmacies", label: "Pharmacies", icon: <HeartPulse />, matchExact: true },
   ],
   doctor: [
@@ -48,6 +49,7 @@ const navLinks: { [key: string]: NavItem[] } = {
     { href: "/doctor/my-patients", label: "My Patients", icon: <Users />, matchExact: true },
     { href: "/doctor/records", label: "Records", icon: <FileText />, matchExact: true },
     { href: "/doctor/appointments", label: "Schedule & Availability", icon: <Calendar />, matchExact: true },
+    { href: "/doctor/meetings", label: "Video Meetings", icon: <Clock />, matchExact: true },
   ],
   pharmacist: [
     { href: "/pharmacist", label: "Prescriptions", icon: <Pill /> },

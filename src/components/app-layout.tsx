@@ -122,7 +122,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   "text-2xl font-black tracking-tight",
                   userRole === 'patient' ? "text-[#263238]" : "text-[#0F172A]"
                 )}>
-                  MedSeva
+                  Arogya Seva
                 </h1>
               </Link>
             </SidebarHeader>

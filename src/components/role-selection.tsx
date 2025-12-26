@@ -18,7 +18,7 @@ export function RoleSelection({ onRoleSelect }: RoleSelectionProps) {
             <Heart className="h-8 w-8 text-white" />
           </div>
           <h1 className="text-5xl font-black tracking-tight">
-            <span className="bg-gradient-to-r from-teal-600 to-teal-800 bg-clip-text text-transparent">MED</span>
+            <span className="bg-gradient-to-r from-teal-600 to-teal-800 bg-clip-text text-transparent">AROGYA</span>
             <span className="text-gray-800 ml-2">SEVA</span>
           </h1>
         </div>

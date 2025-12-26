@@ -2,53 +2,51 @@
 
 'use server';
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { model } from '@/ai/genkit';
 
-const SummarizeMedicalRecordsInputSchema = z.object({
-  recordDataUri: z
-    .string()
-    .describe(
-      "A patient's health record, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
-});
-export type SummarizeMedicalRecordsInput = z.infer<typeof SummarizeMedicalRecordsInputSchema>;
+export interface SummarizeMedicalRecordsInput {
+  recordDataUri: string;
+}
 
-const SummarizeMedicalRecordsOutputSchema = z.object({
-  summary: z
-    .string()
-    .describe('A concise summary of the patient health record, highlighting key information.'),
-});
-export type SummarizeMedicalRecordsOutput = z.infer<typeof SummarizeMedicalRecordsOutputSchema>;
+export interface SummarizeMedicalRecordsOutput {
+  summary: string;
+}
 
 export async function summarizeMedicalRecords(
   input: SummarizeMedicalRecordsInput
 ): Promise<SummarizeMedicalRecordsOutput> {
-  return summarizeMedicalRecordsFlow(input);
-}
+  
+  const prompt = `You are an AI assistant specializing in summarizing patient medical records for doctors.
 
-const prompt = ai.definePrompt({
-  name: 'summarizeMedicalRecordsPrompt',
-  input: {schema: SummarizeMedicalRecordsInputSchema},
-  output: {schema: SummarizeMedicalRecordsOutputSchema},
-  prompt: `You are an AI assistant specializing in summarizing patient medical records for doctors.
+Please provide a concise summary of the patient's health record, highlighting key information such as diagnoses, treatments, medications, and relevant medical history.
 
-  Please provide a concise summary of the patient's health record, highlighting key information such as diagnoses, treatments, medications, and relevant medical history.
+Return the response as a JSON object with the following structure:
+{
+  "summary": "string"
+}`;
 
-  Here is the patient's medical record:
-
-  {{media url=recordDataUri}}
-  `,
-});
-
-const summarizeMedicalRecordsFlow = ai.defineFlow(
-  {
-    name: 'summarizeMedicalRecordsFlow',
-    inputSchema: SummarizeMedicalRecordsInputSchema,
-    outputSchema: SummarizeMedicalRecordsOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  // Convert data URI to inline data for Gemini
+  const [mimeType, base64Data] = input.recordDataUri.replace('data:', '').split(';base64,');
+  
+  const result = await model.generateContent([
+    prompt,
+    {
+      inlineData: {
+        data: base64Data,
+        mimeType: mimeType
+      }
+    }
+  ]);
+  
+  const response = await result.response;
+  const text = response.text();
+  
+  try {
+    // Clean the response text to extract JSON
+    const cleanText = text.replace(/```json\n?|```\n?/g, '').trim();
+    return JSON.parse(cleanText);
+  } catch (error) {
+    console.error('AI Response parsing error:', text);
+    throw new Error(`Failed to parse AI response: ${error.message}`);
   }
-);
+}

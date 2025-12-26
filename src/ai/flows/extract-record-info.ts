@@ -2,59 +2,61 @@
 
 'use server';
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { model } from '@/ai/genkit';
 
-const ExtractRecordInfoInputSchema = z.object({
-  recordDataUri: z
-    .string()
-    .describe(
-      "A patient's health record, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
-});
-export type ExtractRecordInfoInput = z.infer<typeof ExtractRecordInfoInputSchema>;
+export interface ExtractRecordInfoInput {
+  recordDataUri: string;
+}
 
-const ExtractRecordInfoOutputSchema = z.object({
-  patientName: z.string().describe("The full name of the patient."),
-  dateOfBirth: z.string().describe("The patient's date of birth in YYYY-MM-DD format."),
-  recordType: z.string().describe("The type of medical record (e.g., Lab Report, MRI Scan, Prescription)."),
-  summary: z.string().describe("A concise, one-sentence summary of the record's key findings."),
-});
-export type ExtractRecordInfoOutput = z.infer<typeof ExtractRecordInfoOutputSchema>;
+export interface ExtractRecordInfoOutput {
+  patientName: string;
+  dateOfBirth: string;
+  recordType: string;
+  summary: string;
+}
 
 export async function extractRecordInfo(
   input: ExtractRecordInfoInput
 ): Promise<ExtractRecordInfoOutput> {
-  return extractRecordInfoFlow(input);
-}
+  
+  const prompt = `You are an AI medical assistant. Your task is to extract key information from the provided medical document.
 
-const prompt = ai.definePrompt({
-  name: 'extractRecordInfoPrompt',
-  input: {schema: ExtractRecordInfoInputSchema},
-  output: {schema: ExtractRecordInfoOutputSchema},
-  prompt: `You are an AI medical assistant. Your task is to extract key information from the provided medical document.
+Analyze the document and return the following details:
+- Patient's full name.
+- Patient's date of birth.
+- The specific type of the record (e.g., "Lab Report - Complete Blood Count", "MRI Scan - Brain", "Prescription").
+- A single sentence summarizing the most critical finding or purpose of the document.
 
-  Analyze the document and return the following details:
-  - Patient's full name.
-  - Patient's date of birth.
-  - The specific type of the record (e.g., "Lab Report - Complete Blood Count", "MRI Scan - Brain", "Prescription").
-  - A single sentence summarizing the most critical finding or purpose of the document.
+Return the response as a JSON object with the following structure:
+{
+  "patientName": "string",
+  "dateOfBirth": "string",
+  "recordType": "string",
+  "summary": "string"
+}`;
 
-  Medical Document:
-  {{media url=recordDataUri}}
-  `,
-});
-
-const extractRecordInfoFlow = ai.defineFlow(
-  {
-    name: 'extractRecordInfoFlow',
-    inputSchema: ExtractRecordInfoInputSchema,
-    outputSchema: ExtractRecordInfoOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  // Convert data URI to inline data for Gemini
+  const [mimeType, base64Data] = input.recordDataUri.replace('data:', '').split(';base64,');
+  
+  const result = await model.generateContent([
+    prompt,
+    {
+      inlineData: {
+        data: base64Data,
+        mimeType: mimeType
+      }
+    }
+  ]);
+  
+  const response = await result.response;
+  const text = response.text();
+  
+  try {
+    // Clean the response text to extract JSON
+    const cleanText = text.replace(/```json\n?|```\n?/g, '').trim();
+    return JSON.parse(cleanText);
+  } catch (error) {
+    console.error('AI Response parsing error:', text);
+    throw new Error(`Failed to parse AI response: ${error.message}`);
   }
-);
-
-    
+}

@@ -4,13 +4,15 @@
 import { useAuth } from "@/lib/auth";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Share2, Eye, Bell, UploadCloud, Search, Loader2, MessageCircle, Mic, Shield, Banknote, Calendar, Megaphone, Flower2, Apple, TrendingUp, Settings, User } from "lucide-react";
+import { FileText, Share2, Eye, Bell, UploadCloud, Search, Loader2, MessageCircle, Mic, Shield, Banknote, Calendar, Megaphone, Flower2, Apple, TrendingUp, Settings, User, Video } from "lucide-react";
 import { VoiceInput, TextToSpeech } from "@/components/ui/voice-input";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { HealthModal } from "@/components/ui/health-modal";
 import { HealthTracker } from "@/components/patient/health-tracker";
 import { ProfileEditModal } from "@/components/ui/profile-edit-modal";
+import EmergencyCallButton from "@/components/emergency/emergency-call-button";
+import ScheduledMeeting from "@/components/scheduled-meeting";
 import {
   ChartContainer,
   ChartTooltip,
@@ -256,6 +258,7 @@ export default function PatientDashboard() {
             <span className="font-bold text-white">💡 Health Tip:</span> Stay hydrated! Drinking enough water can improve energy levels and brain function.
           </p>
            <div className="flex flex-wrap gap-3 pt-4">
+              <EmergencyCallButton />
               <Button 
                 onClick={() => router.push('/patient/records')}
                 className="bg-white text-[#00796B] hover:bg-gray-100 font-bold shadow-lg"
@@ -270,11 +273,12 @@ export default function PatientDashboard() {
                 <Search className="mr-2 h-4 w-4" /> Find Doctors
               </Button>
               <Button 
-                onClick={() => window.open('https://wa.me/9373835103?text=Hello, I need medical assistance from MedSeva', '_blank')}
+                onClick={() => window.open('https://wa.me/9373835103?text=Hello, I need medical assistance from Arogya Seva', '_blank')}
                 className="bg-[#25D366] hover:bg-[#128C7E] text-white font-bold shadow-lg"
               >
                 <MessageCircle className="mr-2 h-4 w-4" /> Connect WhatsApp
               </Button>
+
           </div>
         </div>
       </div>
@@ -282,7 +286,7 @@ export default function PatientDashboard() {
       {/* WhatsApp Connect Card */}
       <Card 
         className="bg-[#25D366] hover:bg-[#128C7E] text-white cursor-pointer transition-all duration-300 hover:scale-[1.02] shadow-lg"
-        onClick={() => window.open('https://wa.me/9373835103?text=Hello, I need medical assistance from MedSeva', '_blank')}
+        onClick={() => window.open('https://wa.me/9373835103?text=Hello, I need medical assistance from Arogya Seva', '_blank')}
       >
         <CardContent className="flex items-center justify-between p-6">
           <div>
@@ -449,6 +453,9 @@ export default function PatientDashboard() {
           title={modalState.title}
         />
       )}
+
+      {/* Scheduled Meetings */}
+      <ScheduledMeeting />
 
       {/* Health Tracker Section */}
       <HealthTracker />

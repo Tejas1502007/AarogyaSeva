@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,10 @@ import {
   BookOpen, Users, Stethoscope
 } from "lucide-react";
 import { ProfileEditModal } from "@/components/ui/profile-edit-modal";
+import BookAppointment from "@/components/patient/book-appointment";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth";
 
 interface DoctorProfileProps {
   doctorId?: string;
@@ -18,7 +22,10 @@ interface DoctorProfileProps {
 }
 
 export function DoctorProfile({ doctorId, isOwnProfile = false }: DoctorProfileProps) {
+  const { user, userRole } = useAuth();
   const [profileEditOpen, setProfileEditOpen] = useState(false);
+  const [showBooking, setShowBooking] = useState(false);
+  const [availability, setAvailability] = useState<any>(null);
   const [doctorProfile, setDoctorProfile] = useState({
     name: "Dr. Rajesh Kumar Sharma",
     specialization: "Interventional Cardiology",
@@ -35,6 +42,88 @@ export function DoctorProfile({ doctorId, isOwnProfile = false }: DoctorProfileP
     consultationFee: 1200,
     availability: "Mon-Sat: 8:00 AM - 7:00 PM"
   });
+
+  useEffect(() => {
+    if (doctorId) {
+      loadDoctorData();
+      loadAvailability();
+    }
+  }, [doctorId]);
+
+  const loadDoctorData = async () => {
+    if (!doctorId) return;
+    try {
+      const docRef = doc(db, "users", doctorId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setDoctorProfile({
+          name: data.displayName || data.name || "Dr. Unknown",
+          specialization: data.specialization || "General Medicine",
+          qualifications: data.qualifications || "MBBS",
+          experience: data.experience || "5",
+          phone: data.phone || "+91 9876543210",
+          email: data.email || "doctor@medseva.com",
+          address: data.address || "Hospital Address",
+          image: data.image || "",
+          about: data.about || "Experienced medical professional committed to providing quality healthcare.",
+          hospital: data.hospital || "Hospital",
+          rating: data.rating || 4.5,
+          totalReviews: data.totalReviews || 0,
+          consultationFee: data.consultationFee || 500,
+          availability: data.availability || "Mon-Sat: 9:00 AM - 6:00 PM"
+        });
+      }
+    } catch (error) {
+      console.error("Error loading doctor data:", error);
+    }
+  };
+
+  const loadAvailability = async () => {
+    if (!doctorId) return;
+    try {
+      const availRef = doc(db, "availability", doctorId);
+      const availSnap = await getDoc(availRef);
+      if (availSnap.exists()) {
+        setAvailability({
+          ...availSnap.data(),
+          bookedSlots: []
+        });
+      } else {
+        setAvailability({
+          slotDuration: 30,
+          workingDays: {
+            'Monday': { enabled: true, start: '10:00', end: '18:00' },
+            'Tuesday': { enabled: true, start: '10:00', end: '18:00' },
+            'Wednesday': { enabled: true, start: '10:00', end: '18:00' },
+            'Thursday': { enabled: true, start: '10:00', end: '18:00' },
+            'Friday': { enabled: true, start: '10:00', end: '18:00' },
+            'Saturday': { enabled: false, start: '10:00', end: '14:00' },
+            'Sunday': { enabled: false, start: '10:00', end: '18:00' }
+          },
+          bookedSlots: []
+        });
+      }
+    } catch (error) {
+      console.error("Error loading availability:", error);
+    }
+  };
+
+  const handleBookAppointment = () => {
+    setShowBooking(true);
+    // Scroll to booking section after a short delay
+    setTimeout(() => {
+      const bookingElement = document.getElementById('booking-section');
+      if (bookingElement) {
+        bookingElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  const onAppointmentBooked = (slot: Date, mode: 'online' | 'in-person') => {
+    setShowBooking(false);
+    // You could add additional logic here like showing a success message
+  };
 
   const education = [
     { degree: "MBBS (Bachelor of Medicine & Surgery)", institution: "All India Institute of Medical Sciences (AIIMS), New Delhi", year: "2001-2006" },
@@ -155,17 +244,28 @@ export function DoctorProfile({ doctorId, isOwnProfile = false }: DoctorProfileP
                 </div>
               </div>
 
-              {/* Status Badges */}
-              <div className="flex flex-wrap gap-3">
-                <Badge className="bg-green-100 text-green-700 px-4 py-2 text-sm font-semibold">
-                  Available Today
-                </Badge>
-                <Badge variant="secondary" className="bg-[#F0F9FF] text-[#0284C7] px-4 py-2 text-sm font-semibold">
-                  {doctorProfile.availability}
-                </Badge>
-                <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 px-4 py-2 text-sm font-semibold">
-                  Top Rated Doctor
-                </Badge>
+              {/* Status Badges and Book Button */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-3">
+                  <Badge className="bg-green-100 text-green-700 px-4 py-2 text-sm font-semibold">
+                    Available Today
+                  </Badge>
+                  <Badge variant="secondary" className="bg-[#F0F9FF] text-[#0284C7] px-4 py-2 text-sm font-semibold">
+                    {doctorProfile.availability}
+                  </Badge>
+                  <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 px-4 py-2 text-sm font-semibold">
+                    Top Rated Doctor
+                  </Badge>
+                </div>
+                {!isOwnProfile && userRole === 'patient' && (
+                  <Button 
+                    onClick={handleBookAppointment}
+                    className="bg-[#009688] hover:bg-[#00796B] text-white px-6 py-3 text-lg font-semibold"
+                  >
+                    <Calendar className="mr-2 h-5 w-5" />
+                    Book Appointment
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -326,6 +426,25 @@ export function DoctorProfile({ doctorId, isOwnProfile = false }: DoctorProfileP
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Appointment Booking */}
+      {showBooking && availability && (
+        <Card id="booking-section">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-[#0284C7]" />
+              Book Appointment with {doctorProfile.name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BookAppointment 
+              doctor={{ id: doctorId || '', name: doctorProfile.name }}
+              availability={availability}
+              onBookAppointment={onAppointmentBooked}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Profile Edit Modal */}
       <ProfileEditModal 

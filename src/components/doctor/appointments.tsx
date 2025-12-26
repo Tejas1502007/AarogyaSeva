@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot, getDoc, doc, updateDoc, setDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { createMeeting } from '@/lib/meeting-utils';
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
@@ -87,10 +88,12 @@ const AppointmentSchedule = () => {
             return;
         }
 
-        const q = query(
-            collection(db, "appointments"),
-            where("doctorId", "==", user.uid)
-        );
+        // Add delay to ensure Firestore rules are applied
+        const timer = setTimeout(() => {
+            const q = query(
+                collection(db, "appointments"),
+                where("doctorId", "==", user.uid)
+            );
 
         const unsubscribe = onSnapshot(q, async (querySnapshot) => {
             setLoading(true);
@@ -142,7 +145,10 @@ const AppointmentSchedule = () => {
             setLoading(false);
         });
 
-        return () => unsubscribe();
+            return () => unsubscribe();
+        }, 1500);
+        
+        return () => clearTimeout(timer);
     }, [user, toast]);
 
     const todayAppointments = appointments.filter(a => a.appointmentTime && isToday(new Date(a.appointmentTime.seconds * 1000)));
@@ -250,6 +256,23 @@ const AppointmentsTable = ({ appointments }: { appointments: AppointmentWithPati
 
             await createNotification(appointment.patientId, `Appointment ${newStatus}`, patientMessage, newStatus === 'Cancelled' ? 'urgent' : 'info');
             await createNotification(user.uid, `Appointment ${newStatus}`, doctorMessage);
+            
+            // Create scheduled meeting for confirmed online appointments
+            if (newStatus === 'Confirmed' && appointment.mode === 'Online') {
+                try {
+                    const roomId = `scheduled-${appointment.id}`;
+                    
+                    // Update appointment with meeting room ID
+                    await updateDoc(appointmentRef, { 
+                        roomId: roomId,
+                        meetingScheduled: true
+                    });
+                    
+                    console.log('Scheduled meeting created for appointment:', appointment.id, 'with room ID:', roomId);
+                } catch (error) {
+                    console.error('Error creating scheduled meeting:', error);
+                }
+            }
 
             toast({
                 title: `Appointment ${newStatus}`,

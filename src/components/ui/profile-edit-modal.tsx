@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, Upload, Loader2 } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth";
 
 interface ProfileEditModalProps {
@@ -23,83 +22,19 @@ interface ProfileEditModalProps {
 export function ProfileEditModal({ isOpen, onClose, userType, currentProfile, onSave }: ProfileEditModalProps) {
   const { user } = useAuth();
   const [profile, setProfile] = useState(currentProfile);
-  const [imagePreview, setImagePreview] = useState(currentProfile?.image || "");
-  const [imageFile, setImageFile] = useState<File | null>(null);
+
   const [saving, setSaving] = useState(false);
 
-  const compressImage = (file: File): Promise<File> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d')!;
-      const img = new Image();
-      
-      img.onload = () => {
-        const maxSize = 400;
-        let { width, height } = img;
-        
-        if (width > height) {
-          if (width > maxSize) {
-            height = (height * maxSize) / width;
-            width = maxSize;
-          }
-        } else {
-          if (height > maxSize) {
-            width = (width * maxSize) / height;
-            height = maxSize;
-          }
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        canvas.toBlob((blob) => {
-          const compressedFile = new File([blob!], file.name, {
-            type: 'image/jpeg',
-            lastModified: Date.now()
-          });
-          resolve(compressedFile);
-        }, 'image/jpeg', 0.7);
-      };
-      
-      img.src = URL.createObjectURL(file);
-    });
-  };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const compressedFile = await compressImage(file);
-      setImageFile(compressedFile);
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setImagePreview(result);
-      };
-      reader.readAsDataURL(compressedFile);
-    }
-  };
 
   const handleSave = async () => {
     if (!user) return;
     
     setSaving(true);
     try {
-      let imageUrl = profile?.image || "";
-      
-      // Upload image if a new file was selected
-      if (imageFile) {
-        const imageRef = ref(storage, `profile-images/${user.uid}/${Date.now()}-${imageFile.name}`);
-        const snapshot = await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(snapshot.ref);
-      }
-      
       // Update profile data
       const updatedProfile = {
         ...profile,
-        image: imageUrl,
         updatedAt: new Date().toISOString()
       };
       
@@ -132,36 +67,7 @@ export function ProfileEditModal({ isOpen, onClose, userType, currentProfile, on
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Profile Image */}
-          <div className="flex flex-col items-center space-y-4">
-            <div className="relative">
-              <div className="w-32 h-32 rounded-full overflow-hidden border-4" style={{ borderColor: colorScheme.secondary }}>
-                {imagePreview ? (
-                  <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: colorScheme.secondary }}>
-                    <Camera className="h-12 w-12 text-white" />
-                  </div>
-                )}
-              </div>
-              <label 
-                className="absolute bottom-0 right-0 p-2 rounded-full cursor-pointer shadow-lg focus-visible:focus" 
-                style={{ backgroundColor: colorScheme.primary }}
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.querySelector('input')?.click()}
-              >
-                <Upload className="h-4 w-4 text-white" aria-hidden="true" />
-                <span className="sr-only">Upload profile image</span>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleImageUpload} 
-                  className="hidden" 
-                  aria-label="Upload profile image"
-                />
-              </label>
-            </div>
-          </div>
+
 
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">

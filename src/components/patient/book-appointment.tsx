@@ -91,7 +91,7 @@ export default function BookAppointment({
             );
             
             if (!isBooked && !isBefore(currentTime, new Date())) {
-                slots.push(format(currentTime, 'HH:mm'));
+                slots.push(format(currentTime, 'h:mm a'));
             }
             currentTime = add(currentTime, { minutes: slotDuration });
         }
@@ -116,7 +116,9 @@ export default function BookAppointment({
             return;
         }
         setIsBooking(true);
-        const [hour, minute] = selectedTime.split(':').map(Number);
+        const timeDate = new Date(`1970-01-01 ${selectedTime}`);
+        const hour = timeDate.getHours();
+        const minute = timeDate.getMinutes();
         const bookedSlotDate = new Date(selectedDate);
         bookedSlotDate.setHours(hour, minute);
         

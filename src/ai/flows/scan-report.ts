@@ -2,63 +2,67 @@
 
 'use server';
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { model } from '@/ai/genkit';
 
-const ScanReportInputSchema = z.object({
-  reportDataUri: z
-    .string()
-    .describe(
-      "A patient's medical report (e.g., prescription, lab result), as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
-});
-export type ScanReportInput = z.infer<typeof ScanReportInputSchema>;
+export interface ScanReportInput {
+  reportDataUri: string;
+}
 
-const ScanReportOutputSchema = z.object({
-  summary: z.string().describe("A brief, easy-to-understand summary of the report's key findings."),
-  diagnosis: z.string().describe("The primary diagnosis or condition mentioned in the report."),
-  medications: z.array(z.object({
-    name: z.string().describe("Name of the medication."),
-    dosage: z.string().describe("Dosage instructions (e.g., '500mg')."),
-    frequency: z.string().describe("How often to take the medication (e.g., 'Twice a day for 7 days')."),
-  })).describe("A list of prescribed medications, if any."),
-  followUp: z.string().describe("Recommended follow-up actions or appointments, if mentioned."),
-});
-export type ScanReportOutput = z.infer<typeof ScanReportOutputSchema>;
+export interface ScanReportOutput {
+  summary: string;
+  diagnosis: string;
+  medications: Array<{
+    name: string;
+    dosage: string;
+    frequency: string;
+  }>;
+  followUp: string;
+}
 
 export async function scanReport(
   input: ScanReportInput
 ): Promise<ScanReportOutput> {
-  return scanReportFlow(input);
-}
+  
+  const prompt = `You are an AI medical assistant. Your task is to analyze the provided medical document and extract key information in a structured format for a patient. The language should be clear and easy to understand.
 
-const prompt = ai.definePrompt({
-  name: 'scanReportPrompt',
-  input: {schema: ScanReportInputSchema},
-  output: {schema: ScanReportOutputSchema},
-  prompt: `You are an AI medical assistant. Your task is to analyze the provided medical document and extract key information in a structured format for a patient. The language should be clear and easy to understand.
+Analyze the document and return the following:
+- A brief, easy-to-understand summary of the key findings.
+- The primary diagnosis or condition.
+- A list of all prescribed medications, including their name, dosage, and frequency.
+- Any recommended follow-up actions or appointments.
 
-  Analyze the document and return the following:
-  - A brief, easy-to-understand summary of the key findings.
-  - The primary diagnosis or condition.
-  - A list of all prescribed medications, including their name, dosage, and frequency.
-  - Any recommended follow-up actions or appointments.
+If a section is not applicable (e.g., no medications are listed), indicate that clearly.
 
-  If a section is not applicable (e.g., no medications are listed), indicate that clearly.
+Return the response as a JSON object with the following structure:
+{
+  "summary": "string",
+  "diagnosis": "string", 
+  "medications": [{"name": "string", "dosage": "string", "frequency": "string"}],
+  "followUp": "string"
+}`;
 
-  Medical Document:
-  {{media url=reportDataUri}}
-  `,
-});
-
-const scanReportFlow = ai.defineFlow(
-  {
-    name: 'scanReportFlow',
-    inputSchema: ScanReportInputSchema,
-    outputSchema: ScanReportOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  // Convert data URI to inline data for Gemini
+  const [mimeType, base64Data] = input.reportDataUri.replace('data:', '').split(';base64,');
+  
+  const result = await model.generateContent([
+    prompt,
+    {
+      inlineData: {
+        data: base64Data,
+        mimeType: mimeType
+      }
+    }
+  ]);
+  
+  const response = await result.response;
+  const text = response.text();
+  
+  try {
+    // Clean the response text to extract JSON
+    const cleanText = text.replace(/```json\n?|```\n?/g, '').trim();
+    return JSON.parse(cleanText);
+  } catch (error) {
+    console.error('AI Response parsing error:', text);
+    throw new Error(`Failed to parse AI response: ${error.message}`);
   }
-);
+}

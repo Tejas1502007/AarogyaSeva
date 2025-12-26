@@ -30,6 +30,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (rawUser) => {
       setLoading(true);
+      console.log('Auth state changed:', rawUser?.uid, 'Email verified:', rawUser?.emailVerified);
+      
       if (rawUser && rawUser.emailVerified) {
         setUser(rawUser);
         try {
@@ -37,14 +39,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const userSnap = await getDoc(userRef);
           
           if (userSnap.exists()) {
-              const role = userSnap.data().role || 'patient';
+              const userData = userSnap.data();
+              const role = userData.role || 'patient';
+              console.log('User role found:', role);
               setUserRole(role);
               
               const targetPath = `/${role}`;
-              if (!pathname.startsWith(targetPath)) {
+              // Allow meeting pages without redirect
+              const allowedPaths = ['/meet-now', '/meeting', '/room', '/quick-meet', '/doctor-meet', '/patient-join'];
+              const isAllowedPath = allowedPaths.some(path => pathname.startsWith(path));
+              
+              if (!pathname.startsWith(targetPath) && !isAllowedPath) {
+                console.log('Redirecting to:', targetPath);
                 router.replace(targetPath);
               }
           } else {
+             console.log('User document not found, signing out');
              await firebaseSignOut(auth);
              setUser(null);
              setUserRole(null);
@@ -58,6 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (pathname !== '/') router.replace('/');
         }
       } else {
+        console.log('User not authenticated or email not verified');
         setUser(null);
         setUserRole(null);
         if (pathname !== '/') {

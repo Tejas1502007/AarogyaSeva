@@ -1,36 +1,49 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
+import { getFirestore, enableIndexedDbPersistence, connectFirestoreEmulator } from "firebase/firestore";
 
 const firebaseConfig = {
-  projectId: "secure-seva",
-  appId: "1:72805484139:web:19f633f980474ca1fe532e",
-  storageBucket: "secure-seva.firebasestorage.app",
-  apiKey: "AIzaSyCwYlfrYQNl7SaiDoKqoU5Sc5jfvb52mqM",
-  authDomain: "secure-seva.firebaseapp.com",
-  messagingSenderId: "72805484139",
+  apiKey: "AIzaSyDIv_FdNLdtKdLZdP4cctY5CNSOjTB3vak",
+  authDomain: "med-seva-f584a.firebaseapp.com",
+  projectId: "med-seva-f584a",
+  storageBucket: "med-seva-f584a.firebasestorage.app",
+  messagingSenderId: "666321516268",
+  appId: "1:666321516268:web:43592915a655ef83acd7c9",
+  measurementId: "G-XZS03WYPKX"
 };
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
+
+// Connect to emulators in development (optional)
+if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+  try {
+    // Only connect if not already connected
+    if (!auth._delegate._config.emulator) {
+      connectAuthEmulator(auth, 'http://localhost:9099');
+    }
+    if (!db._delegate._databaseId.projectId.includes('demo-')) {
+      connectFirestoreEmulator(db, 'localhost', 8080);
+    }
+  } catch (error) {
+    console.log('Emulators not available, using production Firebase');
+  }
+}
 
 // Enable offline persistence
-enableIndexedDbPersistence(db)
-  .catch((err) => {
-    if (err.code == 'failed-precondition') {
-      // Multiple tabs open, persistence can only be enabled
-      // in one tab at a time.
-      console.warn('Firestore persistence failed: multiple tabs open.');
-    } else if (err.code == 'unimplemented') {
-      // The current browser does not support all of the
-      // features required to enable persistence.
-      console.warn('Firestore persistence not available in this browser.');
-    }
-  });
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db)
+    .catch((err) => {
+      if (err.code == 'failed-precondition') {
+        console.warn('Firestore persistence failed: multiple tabs open.');
+      } else if (err.code == 'unimplemented') {
+        console.warn('Firestore persistence not available in this browser.');
+      } else {
+        console.warn('Firestore persistence error:', err);
+      }
+    });
+}
 
-
-export { app, auth, db, storage };
+export { app, auth, db };
